@@ -2,6 +2,10 @@ import os
 import h5py
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+import numpy as np
+from scipy.signal import detrend
+from scipy.signal import hilbert
+from scipy.signal import cwt, morlet2
 
 
 def get_imu_names(h5_path):
@@ -44,19 +48,16 @@ def load_imu_data(path, imu_key="DOT_40195BFD802900B5"):
     return acc, gyro, orient, time
 
 
-import numpy as np
-
-
 def standardize_time(time_raw):
     """Convert raw timestamps (e.g. UNIX ns, ms) to seconds starting at 0."""
     time = np.array(time_raw, dtype=np.float64)
 
     if time.max() > 1e12:
-        time = time / 1e9  # nanoseconds → seconds
+        time = time / 1e9
     elif time.max() > 1e9:
-        time = time / 1e6  # microseconds → seconds
+        time = time / 1e6
     elif time.max() > 1e6:
-        time = time / 1e3  # milliseconds → seconds
+        time = time / 1e3
 
     return time - time[0]
 
@@ -104,11 +105,6 @@ def plot_imu_data(acc, gyro, orient, time):
     plt.show()
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import detrend
-
-
 def preprocess_signal(signal):
     """
     Removes linear trend and centers the signal.
@@ -151,11 +147,6 @@ def plot_fft(freqs, fft_vals, title="FFT of Signal"):
     plt.show()
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import detrend
-
-
 def analyze_fft_with_harmonics(
     signal, fs, n_harmonics=3, title="FFT with Fundamental and Harmonics"
 ):
@@ -181,11 +172,11 @@ def analyze_fft_with_harmonics(
     freqs = np.fft.rfftfreq(n, d=1 / fs)
     fft_vals = np.abs(np.fft.rfft(signal))
 
-    # Ignore DC component (freq=0) when detecting peak
+    # Ignore DC component
     fft_vals_no_dc = fft_vals.copy()
     fft_vals_no_dc[0] = 0
 
-    # Find index of max peak (fundamental frequency)
+    # Find index of max peak
     peak_idx = np.argmax(fft_vals_no_dc)
     fundamental_freq = freqs[peak_idx]
 
@@ -247,11 +238,6 @@ def estimate_tremor_direction_pca(tremor_band, fs=60, window_sec=1.0):
     return directions
 
 
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import hilbert
-
-
 def plot_fft_cwt_xyz(
     signal_xyz, time, fs=60, max_freq=15, wavelet_width=6, signal_type="Acceleration"
 ):
@@ -266,9 +252,6 @@ def plot_fft_cwt_xyz(
         wavelet_width (float): wavelet resolution for CWT
         signal_type (str): title prefix (e.g., "Acceleration", "Velocity")
     """
-    import numpy as np
-    from scipy.signal import cwt, morlet2
-    import matplotlib.pyplot as plt
 
     axes = ["X", "Y", "Z"]
     fft_vals_all = []
@@ -305,7 +288,7 @@ def plot_fft_cwt_xyz(
         axs[0].set_ylim(0, max_fft * 1.05)
         axs[0].grid(True)
 
-        # CWT plot with standardized colorbar scale
+        # CWT plot
         im = axs[1].imshow(
             cwt_amp,
             extent=[time[0], time[-1], cwt_freqs[-1], cwt_freqs[0]],
@@ -480,7 +463,7 @@ def analyze_tremor_with_hilbert(acc, time, fs=60, axis_labels=["X", "Y", "Z"]):
     plt.tight_layout()
     plt.show()
 
-    # Phase difference between X and Y (if available)
+    # Phase difference between X and Y
     if acc.shape[1] >= 2:
         phase_diff = np.unwrap(phase[:, 0] - phase[:, 1])
         plt.figure(figsize=(10, 4))
@@ -494,11 +477,6 @@ def analyze_tremor_with_hilbert(acc, time, fs=60, axis_labels=["X", "Y", "Z"]):
         plt.show()
 
     return envelope, phase, analytic_signal
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import cwt, morlet2
 
 
 def analyze_cwt_spectrogram(
@@ -520,7 +498,6 @@ def analyze_cwt_spectrogram(
         freqs (1D array): Frequencies corresponding to the rows of the CWT matrix.
     """
     time = standardize_time(time)
-    # Choose scales corresponding to desired frequency range
     min_scale = 1
     max_scale = int(fs / 1.0)  # Approx ~1 Hz
     scales = np.arange(min_scale, max_scale)
